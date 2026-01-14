@@ -1,52 +1,42 @@
 <script setup>
   import * as todoApi from './api/todo';
- import { ref, computed, onMounted} from 'vue';
+ import { computed, onMounted, ref, TransitionGroup, watch } from 'vue';
  import StatusFilter from "./components/StatusFilter.vue";
  import { defineProps, defineEmits } from 'vue';
  import TodoItem from "./components/TodoItem.vue";
- import { TransitionGroup } from 'vue';
  import  Message from "./components/Message.vue";
 
-const USER_ID = 1; 
-const title = ref("");
-const props = defineProps({
-  status: String,
-});
-const { status } = props;
-const currentStatus = ref("all");
-
-  const errorMessage = ref('');
-  const messageComponent = ref(null);
-  const values = ref({ title: "" });
-  const errors = ref({ title: "" });
-  const emit = defineEmits(['change']);
-  
-
-    const todos = ref([]);
-    
+ const todos = ref([]);
+const title = ref(""); 
+const errorMessage = ref(null);
+const status = ref("all");
 
 onMounted(async () => {
   try {
     todos.value = await todoApi.getTodos();
   } catch (error) {
-    messageComponent.value.show('Unable to load todos');
+   errorMessage.value.show('Unable to load todos');
   }
 });
 
+const activeTodos = computed(() =>
+  todos.value.filter((todo) => !todo.completed));
 
-let initialTodos = [];
 
-try {
-  initialTodos = JSON.parse(localStorage.getItem('todos'));
-} catch (error) {}
+const visibleTodos = computed(() => {
 
-if (!Array.isArray(initialTodos)) {
-  initialTodos = [];
-}
+  if (status.value === "active") {
+    return activeTodos.value;
+  }
+  if (status.value === "completed") {
+    return todos.value.filter(todo => todo.completed);
+  }
+  return todos.value;
+});
 
 const addTodo = async () => {
   if (!title.value) {
-    messageComponent.value.show('Title should not be empty');
+   errorMessage.value.show('Title should not be empty');
     return;
   }
 
@@ -56,7 +46,7 @@ const addTodo = async () => {
     todos.value.push(newTodo);
     title.value = '';
   } catch (error) {
-    messageComponent.value.show('Unable to add a todo');
+    errorMessage.value.show('Unable to add a todo');
   }
 };
 
@@ -66,7 +56,7 @@ const deleteTodo = async todoId => {
     await todoApi.deleteTodo(todoId);
     todos.value = todos.value.filter(todo => todoId !== todo.id);
   } catch (error) {
-    messageComponent.value.show('Unable to delete a todo');
+    errorMessage.value.show('Unable to delete a todo');
   }
 };
 
@@ -78,25 +68,9 @@ const updateTodo = async ({ id, title, completed }) => {
 
     Object.assign(currentTodo, updatedTodo);
   } catch (error) {
-    messageComponent.value.show('Unable to update a todo');
+    errorMessage.value.show('Unable to update a todo');
   }
 };
-
-  const activeTodos = computed(() =>
-  todos.value.filter((todo) => !todo.completed));
-
-
-const visibleTodos = computed(() => {
-  // Тепер використовуємо локальний currentStatus.value
-  if (currentStatus.value === "active") {
-    return activeTodos.value;
-  }
-  if (currentStatus.value === "completed") {
-    return todos.value.filter(todo => todo.completed);
-  }
-  return todos.value;
-});
-
 
 </script>
 <!-- eslint-disable jsx-a11y/label-has-associated-control -->
@@ -128,12 +102,10 @@ const visibleTodos = computed(() => {
             v-model="title"
             class="todoapp__new-todo"
             placeholder="What needs to be done?"
-            @input="errorMessage = ''"
           />
         </form>
       </header>
 
-      <section class="todoapp__main" data-cy="TodoList">
         <!-- This is a completed todo -->
          <TransitionGroup
   tag="section"
@@ -149,15 +121,16 @@ const visibleTodos = computed(() => {
   @update="updateTodo($event)"
 />
          </TransitionGroup>
-      </section>
       <!-- Hide the footer if there are no todos -->
-      <footer class="todoapp__footer" data-cy="Footer">
+      <footer class="todoapp__footer" 
+      v-if="todos.length > 0"
+      data-cy="Footer">
         <span class="todo-count" 
         data-cy="TodosCounter"
         > {{ activeTodos.length }} items left </span>
 
         <!-- Active link should have the 'selected' class -->
-   <StatusFilter v-model="currentStatus"/>
+   <StatusFilter v-model="status"/>
 
         <!-- this button should be disabled if there are no completed todos -->
         <button 
@@ -165,7 +138,7 @@ const visibleTodos = computed(() => {
         class="todoapp__clear-completed"
          data-cy="ClearCompletedButton"
          :disabled="todos.length === activeTodos.length"
-         @click="todos = activeTodos">
+        >
           Clear completed
         </button>
       </footer>
@@ -173,31 +146,17 @@ const visibleTodos = computed(() => {
 
     <!-- DON'T use conditional rendering to hide the notification -->
     <!-- Add the 'hidden' class to hide the message smoothly -->
-    <div data-cy="ErrorNotification"
-    v-if="errorMessage" 
-    class="notification is-danger is-light has-text-weight-normal">
-      <button 
-      data-cy="HideErrorButton" 
-      type="button" 
-      class="delete"
-      @click="errorMessage = ''">
-<Message class="is-danger" ref="messageComponent">
-<template #header="{ someValue }">
-  <p>Server Error {{ someValue }}</p>
+
+<Message class="is-danger" ref="errorMessage">
+<template #header>
+  <p>Server Error</p>
 </template>
 
 
-  <template #default>
-    <p>{{ errorMessage }}</p>
-  </template>
+  <template #default="{ text }">
+        <p>{{ text }}</p>
+      </template>
 </Message>
-
-
-    </button>
-      <!-- show only one message at a time -->
-     
-
-    </div>
   </div>
  
 </template>
