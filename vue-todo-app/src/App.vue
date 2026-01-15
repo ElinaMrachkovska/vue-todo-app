@@ -1,42 +1,52 @@
 <script setup>
   import * as todoApi from './api/todo';
- import { computed, onMounted, ref, TransitionGroup, watch } from 'vue';
+ import { ref, computed, onMounted} from 'vue';
  import StatusFilter from "./components/StatusFilter.vue";
  import { defineProps, defineEmits } from 'vue';
  import TodoItem from "./components/TodoItem.vue";
+ import { TransitionGroup } from 'vue';
  import  Message from "./components/Message.vue";
 
- const todos = ref([]);
-const title = ref(""); 
-const errorMessage = ref(null);
-const status = ref("all");
+const USER_ID = 1; 
+const title = ref("");
+const props = defineProps({
+  status: String,
+});
+const { status } = props;
+const currentStatus = ref("all");
+
+  const errorMessage = ref('');
+  const messageComponent = ref(null);
+  const values = ref({ title: "" });
+  const errors = ref({ title: "" });
+  const emit = defineEmits(['change']);
+  
+
+    const todos = ref([]);
+    
 
 onMounted(async () => {
   try {
     todos.value = await todoApi.getTodos();
   } catch (error) {
-   errorMessage.value.show('Unable to load todos');
+    messageComponent.value.show('Unable to load todos');
   }
 });
 
-const activeTodos = computed(() =>
-  todos.value.filter((todo) => !todo.completed));
 
+let initialTodos = [];
 
-const visibleTodos = computed(() => {
+try {
+  initialTodos = JSON.parse(localStorage.getItem('todos'));
+} catch (error) {}
 
-  if (status.value === "active") {
-    return activeTodos.value;
-  }
-  if (status.value === "completed") {
-    return todos.value.filter(todo => todo.completed);
-  }
-  return todos.value;
-});
+if (!Array.isArray(initialTodos)) {
+  initialTodos = [];
+}
 
 const addTodo = async () => {
   if (!title.value) {
-   errorMessage.value.show('Title should not be empty');
+    messageComponent.value.show('Title should not be empty');
     return;
   }
 
@@ -46,7 +56,7 @@ const addTodo = async () => {
     todos.value.push(newTodo);
     title.value = '';
   } catch (error) {
-    errorMessage.value.show('Unable to add a todo');
+    messageComponent.value.show('Unable to add a todo');
   }
 };
 
@@ -56,7 +66,7 @@ const deleteTodo = async todoId => {
     await todoApi.deleteTodo(todoId);
     todos.value = todos.value.filter(todo => todoId !== todo.id);
   } catch (error) {
-    errorMessage.value.show('Unable to delete a todo');
+    messageComponent.value.show('Unable to delete a todo');
   }
 };
 
@@ -68,7 +78,43 @@ const updateTodo = async ({ id, title, completed }) => {
 
     Object.assign(currentTodo, updatedTodo);
   } catch (error) {
-    errorMessage.value.show('Unable to update a todo');
+    messageComponent.value.show('Unable to update a todo');
+  }
+};
+
+  const activeTodos = computed(() =>
+  todos.value.filter((todo) => !todo.completed));
+
+
+const visibleTodos = computed(() => {
+  // Тепер використовуємо локальний currentStatus.value
+  if (currentStatus.value === "active") {
+    return activeTodos.value;
+  }
+  if (currentStatus.value === "completed") {
+    return todos.value.filter(todo => todo.completed);
+  }
+  return todos.value;
+});
+
+const toggleAllTodos = async () => {
+  const shouldComplete = activeTodos.value.length > 0;
+
+  const updatePromises = todos.value.map(todo => {
+    if (todo.completed !== shouldComplete) {
+      return updateTodo({
+        id: todo.id,
+        title: todo.title,
+        completed: shouldComplete
+      });
+    }
+    return Promise.resolve();
+  });
+
+  try {
+    await Promise.all(updatePromises);
+  } catch (error) {
+    messageComponent.value?.show('Unable to update todos');
   }
 };
 
@@ -88,12 +134,13 @@ const updateTodo = async ({ id, title, completed }) => {
       <header class="todoapp__header">
         <!-- this button should have `active` class only if all todos are completed -->
         <button
-          type="button"
-          v-if="todos.length > 0"
-          class="todoapp__toggle-all"
-          data-cy="ToggleAllButton"
-          :class="{ active: activeTodos.length === 0}"
-        ></button>
+  type="button"
+  v-if="todos.length > 0"
+  class="todoapp__toggle-all"
+  data-cy="ToggleAllButton"
+  :class="{ active: activeTodos.length === 0}"
+  @click="toggleAllTodos"
+></button>
 
         <!-- Add a todo on form submit -->
         <form @submit.prevent="addTodo">
@@ -102,10 +149,12 @@ const updateTodo = async ({ id, title, completed }) => {
             v-model="title"
             class="todoapp__new-todo"
             placeholder="What needs to be done?"
+            @input="errorMessage = ''"
           />
         </form>
       </header>
 
+      <section class="todoapp__main" data-cy="TodoList">
         <!-- This is a completed todo -->
          <TransitionGroup
   tag="section"
@@ -121,16 +170,15 @@ const updateTodo = async ({ id, title, completed }) => {
   @update="updateTodo($event)"
 />
          </TransitionGroup>
+      </section>
       <!-- Hide the footer if there are no todos -->
-      <footer class="todoapp__footer" 
-      v-if="todos.length > 0"
-      data-cy="Footer">
+      <footer class="todoapp__footer" data-cy="Footer">
         <span class="todo-count" 
         data-cy="TodosCounter"
         > {{ activeTodos.length }} items left </span>
 
         <!-- Active link should have the 'selected' class -->
-   <StatusFilter v-model="status"/>
+   <StatusFilter v-model="currentStatus"/>
 
         <!-- this button should be disabled if there are no completed todos -->
         <button 
@@ -138,7 +186,7 @@ const updateTodo = async ({ id, title, completed }) => {
         class="todoapp__clear-completed"
          data-cy="ClearCompletedButton"
          :disabled="todos.length === activeTodos.length"
-        >
+         @click="todos = activeTodos">
           Clear completed
         </button>
       </footer>
@@ -146,17 +194,31 @@ const updateTodo = async ({ id, title, completed }) => {
 
     <!-- DON'T use conditional rendering to hide the notification -->
     <!-- Add the 'hidden' class to hide the message smoothly -->
-
+    <div data-cy="ErrorNotification"
+    v-if="errorMessage" 
+    class="notification is-danger is-light has-text-weight-normal">
+      <button 
+      data-cy="HideErrorButton" 
+      type="button" 
+      class="delete"
+      @click="errorMessage = ''">
 <Message class="is-danger" ref="errorMessage">
-<template #header>
-  <p>Server Error</p>
+<template #header="{ someValue }">
+  <p>Server Error {{ someValue }}</p>
 </template>
 
 
-  <template #default="{ text }">
-        <p>{{ text }}</p>
-      </template>
+  <template #default>
+    <p>{{ errorMessage }}</p>
+  </template>
 </Message>
+
+
+    </button>
+      <!-- show only one message at a time -->
+     
+
+    </div>
   </div>
  
 </template>

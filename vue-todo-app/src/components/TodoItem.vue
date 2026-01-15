@@ -1,13 +1,13 @@
 <script setup>
 import { ref, nextTick } from 'vue';
+import { defineProps, defineEmits } from 'vue';
 
   // const { todo } = defineProps(['todo']);
   const props = defineProps(['todo']);
   const emit = defineEmits(['delete', 'update']);
-
   const editing = ref(false);
-  const titleField = ref(null);
-  const newTitle = ref(props.todo.title);
+const titleField = ref(null);
+const newTitle = ref(props.todo.title);
 
 const startEditing = async () => {
   newTitle.value = props.todo.title;
