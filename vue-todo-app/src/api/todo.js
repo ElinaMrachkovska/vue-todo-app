@@ -1,6 +1,6 @@
 import { client } from '@/utils/http';
 
-const USER_ID = 0;
+const USER_ID = 3658;
 
 export const getTodos = async () => {
   const response = await client.get(`/todos?userId=${USER_ID}`);
@@ -8,9 +8,9 @@ export const getTodos = async () => {
   return response.data;
 };
 
-export const createTodo = async title => {
+export const createTodo = async (title) => {
   const response = await client.post('/todos', {
-    userId: 3658,
+    userId: USER_ID,
     title,
     completed: false,
   });

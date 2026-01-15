@@ -97,6 +97,26 @@ const visibleTodos = computed(() => {
   return todos.value;
 });
 
+const toggleAllTodos = async () => {
+  const shouldComplete = activeTodos.value.length > 0;
+
+  const updatePromises = todos.value.map(todo => {
+    if (todo.completed !== shouldComplete) {
+      return updateTodo({
+        id: todo.id,
+        title: todo.title,
+        completed: shouldComplete
+      });
+    }
+    return Promise.resolve();
+  });
+
+  try {
+    await Promise.all(updatePromises);
+  } catch (error) {
+    messageComponent.value?.show('Unable to update todos');
+  }
+};
 
 </script>
 <!-- eslint-disable jsx-a11y/label-has-associated-control -->
@@ -114,12 +134,13 @@ const visibleTodos = computed(() => {
       <header class="todoapp__header">
         <!-- this button should have `active` class only if all todos are completed -->
         <button
-          type="button"
-          v-if="todos.length > 0"
-          class="todoapp__toggle-all"
-          data-cy="ToggleAllButton"
-          :class="{ active: activeTodos.length === 0}"
-        ></button>
+  type="button"
+  v-if="todos.length > 0"
+  class="todoapp__toggle-all"
+  data-cy="ToggleAllButton"
+  :class="{ active: activeTodos.length === 0}"
+  @click="toggleAllTodos"
+></button>
 
         <!-- Add a todo on form submit -->
         <form @submit.prevent="addTodo">
@@ -181,7 +202,7 @@ const visibleTodos = computed(() => {
       type="button" 
       class="delete"
       @click="errorMessage = ''">
-<Message class="is-danger" ref="messageComponent">
+<Message class="is-danger" ref="errorMessage">
 <template #header="{ someValue }">
   <p>Server Error {{ someValue }}</p>
 </template>
