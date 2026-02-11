@@ -17,12 +17,10 @@ const currentStatus = ref("all");
 
   const errorMessage = ref('');
   const messageComponent = ref(null);
-  const values = ref({ title: "" });
-  const errors = ref({ title: "" });
   const emit = defineEmits(['change']);
   
 
-    const todos = ref([]);
+  const todos = ref([]);
     
 
 onMounted(async () => {
@@ -87,7 +85,7 @@ const updateTodo = async ({ id, title, completed }) => {
 
 
 const visibleTodos = computed(() => {
-  // Тепер використовуємо локальний currentStatus.value
+
   if (currentStatus.value === "active") {
     return activeTodos.value;
   }
@@ -122,12 +120,9 @@ const toggleAllTodos = async () => {
 <!-- eslint-disable jsx-a11y/label-has-associated-control -->
 <!-- eslint-disable jsx-a11y/control-has-associated-label -->
 <template>
-  <!-- Якщо немає USER_ID -->
-  <div v-if="!USER_ID">
-    <p>Please set your USER_ID</p>
-  </div>
 
-  <div v-else class="todoapp">
+
+  <div class="todoapp">
     <h1 class="todoapp__title">todos {{ todos.length }}</h1>
 
     <div class="todoapp__content">
@@ -206,18 +201,13 @@ const toggleAllTodos = async () => {
 <template #header="{ someValue }">
   <p>Server Error {{ someValue }}</p>
 </template>
-
-
   <template #default>
     <p>{{ errorMessage }}</p>
   </template>
 </Message>
-
-
     </button>
       <!-- show only one message at a time -->
      
-
     </div>
   </div>
  
