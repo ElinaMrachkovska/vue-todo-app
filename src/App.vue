@@ -2,22 +2,22 @@
   import * as todoApi from './api/todo';
  import { ref, computed, onMounted} from 'vue';
  import StatusFilter from "./components/StatusFilter.vue";
- import { defineProps, defineEmits } from 'vue';
+//  import { defineProps, defineEmits } from 'vue';
  import TodoItem from "./components/TodoItem.vue";
  import { TransitionGroup } from 'vue';
  import  Message from "./components/Message.vue";
 
 const USER_ID = 1; 
 const title = ref("");
-const props = defineProps({
-  status: String,
-});
-const { status } = props;
+// const props = defineProps({
+//   status: String,
+// });
+// const { status } = props;
 const currentStatus = ref("all");
 
   const errorMessage = ref('');
   const messageComponent = ref(null);
-  const emit = defineEmits(['change']);
+  // const emit = defineEmits(['change']);
   
 
   const todos = ref([]);
@@ -192,21 +192,15 @@ const toggleAllTodos = async () => {
     <div data-cy="ErrorNotification"
     v-if="errorMessage" 
     class="notification is-danger is-light has-text-weight-normal">
-      <button 
-      data-cy="HideErrorButton" 
-      type="button" 
-      class="delete"
-      @click="errorMessage = ''">
-<Message class="is-danger" ref="errorMessage">
-<template #header="{ someValue }">
-  <p>Server Error {{ someValue }}</p>
-</template>
-  <template #default>
-    <p>{{ errorMessage }}</p>
-  </template>
-</Message>
-    </button>
-      <!-- show only one message at a time -->
+          <button data-cy="HideErrorButton" type="button" class="delete" @click="errorMessage = ''"></button>
+      <Message class="is-danger" ref="messageComponent">
+        <template #header="{ someValue }">
+          <p>Server Error {{ someValue }}</p>
+        </template>
+        <template #default>
+          <p>{{ errorMessage }}</p>
+        </template>
+      </Message>
      
     </div>
   </div>
